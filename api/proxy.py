@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import anthropic
+import requests
 import os
 import hashlib
 import json
@@ -26,30 +26,23 @@ def proxy():
         if time.time() < expire:
             return jsonify({"from_cache": True, **cached_data})
     
-    # 调用 Claude
+    # 转发到商家 API
     try:
-        client = anthropic.Anthropic(api_key=os.environ.get('CLAUDE_API_KEY'))
+        api_url = os.environ.get('CLAUDE_API_URL', 'https://apiclaude.cc')
+        api_key = os.environ.get('CLAUDE_API_KEY')
         
-        response = client.messages.create(
-            model=data.get('model', 'claude-3-5-sonnet-20241022'),
-            max_tokens=data.get('max_tokens', 4096),
-            messages=data.get('messages', []),
-            system=data.get('system'),
-            temperature=data.get('temperature', 1.0)
+        response = requests.post(
+            f"{api_url}/v1/messages",
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01"
+            },
+            json=data,
+            timeout=60
         )
         
-        result = {
-            "id": response.id,
-            "type": response.type,
-            "role": response.role,
-            "content": [{"type": c.type, "text": c.text} for c in response.content],
-            "model": response.model,
-            "stop_reason": response.stop_reason,
-            "usage": {
-                "input_tokens": response.usage.input_tokens,
-                "output_tokens": response.usage.output_tokens
-            }
-        }
+        result = response.json()
         
         # 写缓存（5 分钟）
         cache[cache_key] = (result, time.time() + 300)
