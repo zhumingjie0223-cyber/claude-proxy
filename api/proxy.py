@@ -31,13 +31,17 @@ def proxy():
         api_url = os.environ.get('CLAUDE_API_URL', 'https://apiclaude.cc')
         api_key = os.environ.get('CLAUDE_API_KEY')
         
+        headers = {
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01"
+        }
+        
+        if api_key:
+            headers["x-api-key"] = api_key
+        
         response = requests.post(
             f"{api_url}/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01"
-            },
+            headers=headers,
             json=data,
             timeout=60
         )
